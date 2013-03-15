@@ -1,7 +1,6 @@
 [![build status](https://secure.travis-ci.org/dankogai/js-es6-map.png)](http://travis-ci.org/dankogai/js-es6-map)
 
-
-js-es6-map
+es6-map.js
 ==========
 
 Yet another ES6 Map/Set implementation which avoids linear search when possible
@@ -18,6 +17,8 @@ So linear-searching objects are necessary but that restriction does not apply to
 
 Benchmark:
 ---------
+
+The graph below is the average time taken to insert one element where x axis is the size of map and the y axis is time in ms.  See how bad O(n) can be!
 
 ![](benchmark/benchmark.png)
 
