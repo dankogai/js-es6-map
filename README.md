@@ -16,6 +16,10 @@ https://github.com/dankogai/js-object-clone
 
 So linear-searching objects are necessary but that restriction does not apply to primitives.  This implementation uses _hash_ for keys of primitive types so it is O(1) unless `typeof(key) === 'object'` (or `'function'` to be more exact.
 
+Benchmark:
+---------
+
+![](benchmark/benchmark.png)
 
 See Also:
 ---------
