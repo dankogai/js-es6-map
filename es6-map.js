@@ -1,0 +1,228 @@
+/*
+ * $Id$
+ *
+ *  Licensed under the MIT license.
+ *  http://www.opensource.org/licenses/mit-license.php
+ */
+
+(function(global) {
+    'use strict';
+    if (!Object.freeze || typeof Object.freeze !== 'function') {
+        throw Error('ES5 support required');
+    }
+    // from ES5
+    var create = Object.create,
+    defineProperty = Object.defineProperty,
+    defineProperties = Object.defineProperties,
+    getOwnPropertyNames = Object.getOwnPropertyNames,
+    getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor,
+    getPrototypeOf = Object.getPrototypeOf,
+    freeze = Object.freeze,
+    isFrozen = Object.isFrozen,
+    isSealed = Object.isSealed,
+    seal = Object.seal,
+    isExtensible = Object.isExtensible,
+    preventExtensions = Object.preventExtensions,
+    hasOwnProperty = Object.prototype.hasOwnProperty,
+    toString = Object.prototype.toString,
+    isArray = Array.isArray,
+    slice = Array.prototype.slice;
+    // Utility functions
+    var extend = function(dst, src) {
+        getOwnPropertyNames(src).forEach(function(k) {
+            defineProperty(
+                dst, k, getOwnPropertyDescriptor(src, k)
+            )
+        });
+        return dst;
+    };
+    var defaults = function(dst, src) {
+        getOwnPropertyNames(src).forEach(function(k) {
+            if (!hasOwnProperty.call(dst, k)) defineProperty(
+                dst, k, getOwnPropertyDescriptor(src, k)
+            );
+        });
+        return dst;
+    };
+    var defspec = extend( 
+        create(null), getOwnPropertyDescriptor(Object, 'freeze')
+    );
+    delete defspec.value;
+    var toSpec = function(v) { 
+        return typeof(v) !== 'function' ? v
+            : extend(extend(create(null), defspec), { value: v });
+    };
+    var defSpecs = function(src) {
+        var specs = create(null);
+        getOwnPropertyNames(src).forEach(function(k) {
+            defineProperty(specs, k, toSpec(src[k]))
+        });
+        return specs;
+    };
+    var isObject = function(o) { return o === Object(o) };
+    var isPrimitive = function(o) { return o !== Object(o) };
+    var isFunction = function(f) { return typeof(f) === 'function' };
+    var signatureOf = function(o) { return toString.call(o) };
+    var typeOf = function(o){ return o === null ? 'null' : typeof(o) };
+    // Map
+    var val2str = function(t, v) {
+        switch (t) {
+        case 'string':
+            return '.' + v;
+        case 'number':
+            return (
+                0 > v ? ''
+                    : Object.is(v, -0) ? '-'
+                    : v >= 0 ? '+'
+                    : ''
+            ) + v.toString(10);
+        default:
+            return '' + v;
+        }
+    };
+    var str2val = function(s) {
+        switch (s[0]) {
+        case '.':
+            return s.substr(1);
+        case '+':
+        case '-':
+        case 'N': // NaN
+            return parseFloat(s, 10);
+        case 't':
+            return true;
+        case 'f':
+            return false;
+        case 'u':
+            return undefined;
+        case 'n':
+            return null;
+        default:
+            throw new TypeError('unknown format:' + s);
+        }
+    };
+    var indexOfIdentical = function(keys, k) {
+        for (var i = 0, l = keys.length; i < l; i++) {
+            if (Object.is(keys[i], k)) return i;
+        }
+        return -1;
+    };
+    function Map() {
+        if (!(this instanceof Map)) return new Map();
+        defineProperties(this, {
+            '__keys': { value: [] },
+            '__vals': { value: [] },
+            '__hash': { value: {} },
+            '__size': { value: 0, writable: true},
+            'size': {
+                get: function() {
+                    return this.__size;
+                }
+            }
+        });
+    };
+    defaults(Map.prototype, defSpecs({
+        has: function(k) {
+            var t = typeOf(k),
+            s;
+            if (isPrimitive(k)) {
+                s = val2str(t, k);
+                return s in this.__hash;
+            }
+            return indexOfIdentical(this.__keys, k) >= 0;
+        },
+        get: function(k) {
+            var t = typeOf(k),
+            i;
+            if (isPrimitive(k)) {
+                return this.__hash[val2str(t, k)];
+            } else {
+                i = indexOfIdentical(this.__keys, k);
+                return i < 0 ? undefined : this.__vals[i];
+            }
+        },
+        set: function(k, v) {
+            var t = typeOf(k),
+            i, s;
+            if (isPrimitive(k)) {
+                s = val2str(t, k);
+                if (!(s in this.__hash)) this.__size++;
+                this.__hash[s] = v;
+            } else {
+                i = indexOfIdentical(this.__keys, k);
+                if (i < 0) {
+                    this.__keys.push(k);
+                    this.__vals.push(k);
+                    this.__size++;
+                } else {
+                    this.__keys[i] = k;
+                    this.__vals[i] = v;
+                }
+            }
+        },
+        'delete': function(k) {
+            var t = typeOf(k),
+            i, s;
+            if (isPrimitive(k)) {
+                s = val2str(t, k);
+                if (s in this.__hash) {
+                    delete this.__hash[s];
+                    this.__size--;
+                    return true;
+                }
+            } else {
+                i = indexOfIdentical(this.__keys, k);
+                if (i >= 0) {
+                    this.__keys.splice(i, 1);
+                    this.__vals.splice(i, 1);
+                    this.__size--;
+                    return true;
+                }
+            }
+            return false;
+        },
+        keys: function() {
+            var keys = [],
+            hash = this.__hash,
+            k;
+            for (k in hash) {
+                keys.push(str2val(k));
+            }
+            return keys.concat(this.__keys);
+        },
+        values: function() {
+            var vals = [],
+            hash = this.__hash,
+            k;
+            for (k in hash) {
+                vals.push(hash[k]);
+            }
+            return vals.concat(this.__vals);
+        },
+        items: function() {
+            var kv = [],
+            hash = this.__hash,
+            k, i, l;
+            for (k in hash) {
+                kv.push([str2val(k), hash[k]]);
+            }
+            for (i = 0, l = this.__keys.length; i < l; i++) {
+                kv.push([this.__keys[i], this.__vals[i]]);
+            }
+            return kv;
+        }
+    }));
+    // Set
+    function Set() {
+        if (!(this instanceof Set)) return new Set();
+        slice.apply(this, slice.call(arguments));
+    };
+    Set.prototype = Map();
+    defaults(Set.prototype, defSpecs({
+        add: function(k) { Map.prototype.set.apply(this, [k, true]) },
+        values: function() { return Map.prototype.keys.apply(this) }
+    }));
+    defaults(global, defSpecs({
+        Map: Map,
+        Set: Set
+    }));
+})(this);
