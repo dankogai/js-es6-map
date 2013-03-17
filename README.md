@@ -13,7 +13,7 @@ Because the current implementations suck.  They are all O(n) *FOR ALL TYPES OF K
 https://github.com/dankogai/js-object-clone
 > It is not impossible to handle circular references in JavaScript since you can check if the objects are identical via === operator. Yet it is very impractical without object ID like object_id of Ruby or refaddr of Perl. Without object ID you have to linear search just to check if the object is already visited. As a matter of fact the reference implementation of Map and Set of ES6 resorts to linear search.
 
-So linear-searching objects are necessary but that restriction does not apply to primitives.  This implementation uses _hash_ for keys of primitive types so it is O(1) unless `typeof(key) === 'object'` (or `'function'` to be more exact.
+So linear-searching objects are necessary but that restriction does not apply to primitives.  This implementation uses _hash_ for keys of primitive types so it is O(1) unless `typeof(key) === 'object'` (and `'function'` to be more exact).
 
 Benchmark:
 ---------
