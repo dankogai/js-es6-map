@@ -79,6 +79,12 @@ describe('Map falsy primitives', function () {
     it('m.keys()', ok(equals(m.keys(), [])));
     it('m.values()', ok(equals(m.values(), [])));
     it('m.items()', ok(equals(m.items(), [])));
+    for (i = 0, l = falsy.length; i < l; ++i) {
+        v = falsy[i];
+        m.set(v, v);
+    }
+    m.clear();
+    it('m.clear', eq(m.size, 0));
 });
 
 var a = [],
@@ -124,4 +130,10 @@ describe('Map objects', function () {
     it('m.keys()', ok(equals(m.keys(), [])));
     it('m.values()', ok(equals(m.values(), [])));
     it('m.items()', ok(equals(m.items(), [])));
+    for (i = 0, l = objs.length; i < l; ++i) {
+        v = objs[i];
+        m.set(v, v);
+    }
+    m.clear();
+    it('m.clear', eq(m.size, 0));
 });

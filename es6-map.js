@@ -5,7 +5,7 @@
  *  http://www.opensource.org/licenses/mit-license.php
  */
 
-(function(global) {
+(function(root) {
     'use strict';
     if (!Object.freeze || typeof Object.freeze !== 'function') {
         throw Error('ES5 support required');
@@ -59,11 +59,30 @@
         });
         return specs;
     };
+    var is = function (x, y) {
+        return x === y
+            ? x !== 0 ? true
+            : (1 / x === 1 / y) // +-0
+        : (x !== x && y !== y); // NaN
+    };
     var isObject = function(o) { return o === Object(o) };
     var isPrimitive = function(o) { return o !== Object(o) };
     var isFunction = function(f) { return typeof(f) === 'function' };
     var signatureOf = function(o) { return toString.call(o) };
     var typeOf = function(o){ return o === null ? 'null' : typeof(o) };
+    var HASWEAKMAP = (function() { // paranoia check
+        try {
+            var wm = WeakMap();
+            wm.set(wm, wm);
+            return wm.get(wm) === wm;
+        } catch(e) {
+            return false;
+        }
+    })();
+    var HASITERABLEMAP = (function(){
+        if (!HASWEAKMAP) return false;
+        return 'values' in Map();
+    })();
     // Map
     var val2str = function(t, v) {
         switch (t) {
@@ -102,17 +121,17 @@
     };
     var indexOfIdentical = function(keys, k) {
         for (var i = 0, l = keys.length; i < l; i++) {
-            if (Object.is(keys[i], k)) return i;
+            if (is(keys[i], k)) return i;
         }
         return -1;
     };
-    function Map() {
-        if (!(this instanceof Map)) return new Map();
+    function _Map() {
+        if (!(this instanceof _Map)) return new _Map();
         defineProperties(this, {
             '__keys': { value: [] },
             '__vals': { value: [] },
             '__hash': { value: {} },
-            '__size': { value: 0, writable: true},
+            '__size': { value: 0, writable: true },
             'size': {
                 get: function() {
                     return this.__size;
@@ -120,8 +139,8 @@
             }
         });
     };
-    defaults(Map.prototype, defSpecs({
-        has: function(k) {
+    defaults(_Map.prototype, defSpecs({
+        has: function has(k) {
             var t = typeOf(k),
             s;
             if (isPrimitive(k)) {
@@ -130,7 +149,7 @@
             }
             return indexOfIdentical(this.__keys, k) >= 0;
         },
-        get: function(k) {
+        get: function get(k) {
             var t = typeOf(k),
             i;
             if (isPrimitive(k)) {
@@ -140,7 +159,7 @@
                 return i < 0 ? undefined : this.__vals[i];
             }
         },
-        set: function(k, v) {
+        set: function set(k, v) {
             var t = typeOf(k),
             i, s;
             if (isPrimitive(k)) {
@@ -159,7 +178,7 @@
                 }
             }
         },
-        'delete': function(k) {
+        'delete': function (k) { // can't name it in JS
             var t = typeOf(k),
             i, s;
             if (isPrimitive(k)) {
@@ -180,7 +199,7 @@
             }
             return false;
         },
-        keys: function() {
+        keys: function keys() {
             var keys = [],
             hash = this.__hash,
             k;
@@ -189,7 +208,7 @@
             }
             return keys.concat(this.__keys);
         },
-        values: function() {
+        values: function values() {
             var vals = [],
             hash = this.__hash,
             k;
@@ -198,7 +217,7 @@
             }
             return vals.concat(this.__vals);
         },
-        items: function() {
+        items: function items() {
             var kv = [],
             hash = this.__hash,
             k, i, l;
@@ -209,20 +228,31 @@
                 kv.push([this.__keys[i], this.__vals[i]]);
             }
             return kv;
+        },
+        clear: function clear() {
+            var keys = this.keys();
+            while(keys.length) this.delete(keys.pop());
         }
     }));
     // Set
-    function Set() {
-        if (!(this instanceof Set)) return new Set();
+    function _Set() {
+        if (!(this instanceof _Set)) return new _Set();
         slice.apply(this, slice.call(arguments));
     };
-    Set.prototype = Map();
-    defaults(Set.prototype, defSpecs({
+    _Set.prototype = _Map();
+    defaults(_Set.prototype, defSpecs({
         add: function(k) { Map.prototype.set.apply(this, [k, true]) },
         values: function() { return Map.prototype.keys.apply(this) }
     }));
-    defaults(global, defSpecs({
-        Map: Map,
-        Set: Set
-    }));
+    if (!HASITERABLEMAP) {
+        if (HASWEAKMAP) { // native but incomplete so relocate
+            extend(_Map, {__Native__:Map});
+            extend(_Set, {__Native__:Set});
+        }
+        // notice extend is used to override the original
+        extend(root, defSpecs({
+            Map: _Map,
+            Set: _Set
+        }));
+    }
 })(this);
